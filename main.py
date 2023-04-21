@@ -4,39 +4,17 @@ import tkinter.font
 from bs4 import BeautifulSoup as bs4
 import re
 
-data = """
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-
-  <title>Title here</title>
-<style>
-#x{
-	background-color:orange;
-	margin:15;
-}
-</style>
-</head>
-
-<body>
-<h4 style='background-color:green'>test2</h4>
-<h1 style='background-color:red;margin: 15;'>hello</h1>
-<p style='background-color:blue;left:300;'>test</p>
-<p id='x'>
-test
-::br
-t3
-</p>
-<h1 style='background-color:red;margin: 15;'>hello</h1>
-<button onclick='test()'>test</button>
-
-</body>
-</html>
-"""
 
 
-soup = bs4(data,'html.parser')
+
+global _funcs
+_funcs = {}
+
+def load(fname):
+	global soup,data
+	with open(fname) as f:
+		data = f.read().replace('<br>','::br')
+	soup = bs4(data,'html.parser')
 
 
 def get_p():
@@ -53,6 +31,12 @@ def get_p():
 
 iso = lambda d: [x.replace('\n','') for x in re.findall(r'\S+{[\S\s]*?}',d)]
 
+def clear_all():
+	for el in ce:
+		el.tk.destroy()
+def delm(ind):
+	for eli in range(ind,len(ce)): 
+		ce[eli].tk.destroy()
 
 def pcss(c):
   y = iso(c)
@@ -71,20 +55,22 @@ def pcss(c):
       res2[r2[0]].remove('')
   return res2
 
-
-
-main = tk.Tk()
-main.configure(background='white')
-main.option_add('*font','lucida 11')
-
 fsz = {"h1":32,'h2':24,'h3':21,'h4':16,'p':16,'button':16}
 
+def init():
+	global main,gsty,p_elm
+	main = tk.Tk()
+	main.configure(background='white')
+	main.option_add('*font','lucida 11')
 
-main.geometry('500x500')
-main.title(soup.find('title').text)
 
-gsty = pcss(soup.find('style').text)
-print(gsty)
+
+	main.minsize(500,500)
+	main.title(soup.find('title').text)
+
+	gsty = pcss(soup.find('style').text)
+	p_elm = get_p()
+	print(gsty)
 class elm:
 	def __init__(self,text,x,y,fsi=11,at={},pt={},typ=tk.Label):
 		self.sty_attrs = {'text':text,'bg':'white','fg':'black','font':('lucida',fsi),**at}
@@ -96,10 +82,9 @@ class elm:
 		self.tk.place(**self.pos_attrs)
 
 
-p_elm = get_p()
 
 
-print(p_elm)
+global ce
 ce = []
 def parse_style(s):
 	catr = {}
@@ -120,12 +105,7 @@ def parse_style(s):
 			patr['y'] = int(pr[1])
 		
 	return catr,mgn,patr
-def test():
-	global y
-	y= 0
-	print('!!')
-	p_elm[0]['text'] = 'test good'
-	render()
+
 	
 global y
 
@@ -143,7 +123,7 @@ def render():
 		for tx2 in el['text'].split('::br'):
 			tx = tx2.replace('\n','')
 			catr1,mgn1,patr1 = parse_style(el['style'])
-			if el['id'] != None:
+			if el['id'] != None and "#"+el['id'] in gsty:
 
 				catr2,mgn2,patr2 = parse_style(gsty["#"+el['id']])
 
@@ -155,8 +135,9 @@ def render():
 				catr = catr1
 				patr = patr1
 			if el['elm'] == "button":
-
-				catr['command'] = lambda:exec(el['onclick'],globals())
+				onclck = el['onclick']
+				print(';',_funcs[onclck])
+				catr['command'] = lambda:_funcs[onclck]()
 			print('!!!!!',catr)
 			celm = elm(tx,0,y,fsz[el['elm']],catr,patr,(tk.Label if el['elm'] != "button" else tk.Button))
 			ce.append(celm)
@@ -164,9 +145,26 @@ def render():
 			y+=ce[-1].fsize
 		y += mgn
 		print('-')
-render()
+	main.mainloop()
 
 
 
 
-main.mainloop()
+	
+def bind(func,name):
+	_funcs[name]=func
+
+
+def find_by_id(id_):
+	for i in range(len(p_elm)):
+		if p_elm[i]['id'] == id_:
+			return i
+
+
+def func(f):
+	def intr():
+		global y
+		y= 0
+		f()
+		render()	
+	return intr
