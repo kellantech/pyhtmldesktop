@@ -1,8 +1,7 @@
 import tkinter as tk
 import tkinter.font
-from functools import partial
 from bs4 import BeautifulSoup as bs4
-import re
+import re,sys
 
 
 
@@ -11,12 +10,13 @@ global _funcs
 _funcs = {}
 
 def load(fname):
-	global soup,data
+	global soup,data,gsty,p_elm
 	with open(fname) as f:
 		data = f.read().replace('<br>','::br')
 	soup = bs4(data,'html.parser')
 
-
+	gsty = pcss(soup.find('style').text)
+	p_elm = get_p()
 def get_p():
 	xs = soup.find('body').findChildren(recursive=True)
 	res = []
@@ -62,21 +62,24 @@ def pcss(c):
   return res2
 
 fsz = {"h1":32,'h2':24,'h3':21,'h4':16,'p':16,'button':16}
+def up(_):
+	#global wheight, wwidth
+    sys.modules[__name__].wwidth = main.winfo_width()
+    sys.modules[__name__].wheight = main.winfo_height()
+
 
 def init():
-	global main,gsty,p_elm
+	global main
 	main = tk.Tk()
 	main.configure(background='white')
 	main.option_add('*font','lucida 11')
 
-
+	main.bind("<Configure>",up)
 
 	main.minsize(500,500)
 	main.title(soup.find('title').text)
 
-	gsty = pcss(soup.find('style').text)
-	p_elm = get_p()
-	print(gsty)
+	
 class elm:
 	def __init__(self,text,x,y,fsi=11,at={},pt={},typ=tk.Label):
 		self.sty_attrs = {'text':text,'bg':'white','fg':'black','font':('lucida',fsi),**at}
@@ -195,7 +198,6 @@ def bind(nm):
 		return intr
 
 	return _func
-
 
 
 
