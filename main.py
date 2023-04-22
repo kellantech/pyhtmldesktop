@@ -1,6 +1,6 @@
 import tkinter as tk
 import tkinter.font
-
+from functools import partial
 from bs4 import BeautifulSoup as bs4
 import re
 
@@ -35,9 +35,15 @@ def clear_all():
 	for el in ce:
 		el.tk.destroy()
 def delm(ind):
-	for eli in range(ind,len(ce)): 
+	for eli in range(0,len(ce)): 
 		ce[eli].tk.destroy()
 
+def update(ind,atr,val):
+	delm(ind)
+	p_elm[ind][atr]= val
+
+def get(ind):
+	return p_elm[ind]
 def pcss(c):
   y = iso(c)
   res = []
@@ -84,12 +90,14 @@ class elm:
 
 
 
+
 global ce
 ce = []
 def parse_style(s):
 	catr = {}
 	patr = {}
 	mgn = 0
+	display = True
 	for sty in s:
 
 		pr = sty.split(':')
@@ -103,8 +111,9 @@ def parse_style(s):
 			patr['x'] = int(pr[1])
 		if pr[0] == 'top':
 			patr['y'] = int(pr[1])
-		
-	return catr,mgn,patr
+		if pr[0] == 'display' and pr[1] == 'none':
+			display = False
+	return catr,mgn,patr,display
 
 	
 global y
@@ -122,18 +131,20 @@ def render():
 
 		for tx2 in el['text'].split('::br'):
 			tx = tx2.replace('\n','')
-			catr1,mgn1,patr1 = parse_style(el['style'])
+			catr1,mgn1,patr1,disp1 = parse_style(el['style'])
 			if el['id'] != None and "#"+el['id'] in gsty:
 
-				catr2,mgn2,patr2 = parse_style(gsty["#"+el['id']])
+				catr2,mgn2,patr2,disp2 = parse_style(gsty["#"+el['id']])
 
 				catr = {**catr1,**catr2}
 				patr = {**patr1, **patr2}
 				mgn = mgn1 or mgn2
+				disp = disp2 or disp1
 			else:
 				mgn = mgn1
 				catr = catr1
 				patr = patr1
+				disp = disp1
 			if el['elm'] == "button":
 				onclck = el['onclick']
 				print(';',_funcs[onclck])
@@ -141,17 +152,24 @@ def render():
 			print('!!!!!',catr)
 			celm = elm(tx,0,y,fsz[el['elm']],catr,patr,(tk.Label if el['elm'] != "button" else tk.Button))
 			ce.append(celm)
-			ce[-1].render()
-			y+=ce[-1].fsize
+			if disp:
+				ce[-1].render()
+				y+=ce[-1].fsize
 		y += mgn
 		print('-')
+
+		if type(ce[-1].tk) == tk.Button:
+
+			y += 10
+
+
 	main.mainloop()
 
 
 
 
 	
-def bind(func,name):
+def _bind(func,name):
 	_funcs[name]=func
 
 
@@ -160,11 +178,24 @@ def find_by_id(id_):
 		if p_elm[i]['id'] == id_:
 			return i
 
+def find_by_tag(tag):
+	r = []
+	for i in range(len(p_elm)):
+		if p_elm[i]['elm'] == tag:
+			r.append(i)
+	return r
+def bind(nm):
+	def _func(f):
+		def intr():
+			global y
+			y= 0
+			f()
+			render()	
+		_bind(intr,nm)
+		return intr
 
-def func(f):
-	def intr():
-		global y
-		y= 0
-		f()
-		render()	
-	return intr
+	return _func
+
+
+
+
